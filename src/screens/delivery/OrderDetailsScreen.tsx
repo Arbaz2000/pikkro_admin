@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import type { RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../services/ThemeService';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { orderService, type OrderDetails } from '../../services/OrderService';
 
 type DeliveryStackParamList = {
   Orders: undefined;
@@ -11,29 +12,7 @@ type DeliveryStackParamList = {
 
 type OrderDetailsScreenRouteProp = RouteProp<DeliveryStackParamList, 'OrderDetails'>;
 
-interface OrderDetails {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-  address: string;
-  status: 'pending' | 'pickup' | 'delivering' | 'delivered' | 'cancelled';
-  items: {
-    id: string;
-    name: string;
-    quantity: number;
-    price: number;
-  }[];
-  createdAt: string;
-  assignedDriver?: {
-    id: string;
-    name: string;
-    phone: string;
-  };
-  totalAmount: number;
-  paymentStatus: 'pending' | 'paid' | 'failed';
-  deliveryNotes?: string;
-}
+
 
 const statusColors = {
   pending: '#ff8418',
@@ -74,27 +53,8 @@ export default function OrderDetailsScreen({
 
   const fetchOrderDetails = React.useCallback(async () => {
     try {
-      // TODO: Implement actual API call to fetch order details
-      // const response = await deliveryService.getOrderDetails(route.params.orderId);
-      // setOrderDetails(response.data);
-      
-      // Mock data for now
-      setOrderDetails({
-        id: route.params.orderId,
-        customerName: 'John Doe',
-        customerPhone: '+1 234 567 8900',
-        customerEmail: 'john.doe@example.com',
-        address: '123 Main St, City, State 12345',
-        status: 'pending',
-        items: [
-          { id: '1', name: 'Item 1', quantity: 2, price: 29.99 },
-          { id: '2', name: 'Item 2', quantity: 1, price: 49.99 },
-        ],
-        createdAt: '2024-03-20T10:00:00Z',
-        totalAmount: 109.97,
-        paymentStatus: 'pending',
-        deliveryNotes: 'Please deliver to the front door',
-      });
+      const orderDetails = await orderService.getOrderDetails(route.params.orderId);
+      setOrderDetails(orderDetails);
     } catch (error) {
       console.error('Failed to fetch order details:', error);
       Alert.alert('Error', 'Failed to load order details');
@@ -154,27 +114,35 @@ export default function OrderDetailsScreen({
           <Text style={[styles.value, { color: colors.text }]}>{orderDetails.customerName}</Text>
           <Text style={[styles.label, { color: colors.text }]}>Phone</Text>
           <Text style={[styles.value, { color: colors.text }]}>{orderDetails.customerPhone}</Text>
-          <Text style={[styles.label, { color: colors.text }]}>Email</Text>
-          <Text style={[styles.value, { color: colors.text }]}>{orderDetails.customerEmail}</Text>
           <Text style={[styles.label, { color: colors.text }]}>Delivery Address</Text>
           <Text style={[styles.value, { color: colors.text }]}>{orderDetails.address}</Text>
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Pickup Information</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Name</Text>
+          <Text style={[styles.value, { color: colors.text }]}>{orderDetails.pickupDetails.name || 'N/A'}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Phone</Text>
+          <Text style={[styles.value, { color: colors.text }]}>{orderDetails.pickupDetails.Phone}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Address</Text>
+          <Text style={[styles.value, { color: colors.text }]}>{orderDetails.pickupDetails.address}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Locality</Text>
+          <Text style={[styles.value, { color: colors.text }]}>{orderDetails.pickupDetails.Locality}</Text>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Order Items</Text>
-          {orderDetails.items.map(item => (
-            <View key={item.id} style={styles.itemRow}>
-              <View style={styles.itemInfo}>
-                <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
-                <Text style={[styles.itemQuantity, { color: colors.text }]}>
-                  Quantity: {item.quantity}
-                </Text>
-              </View>
-              <Text style={[styles.itemPrice, { color: colors.text }]}>
-                ${(item.price * item.quantity).toFixed(2)}
+          <View style={styles.itemRow}>
+            <View style={styles.itemInfo}>
+              <Text style={[styles.itemName, { color: colors.text }]}>{orderDetails.items[0]}</Text>
+              <Text style={[styles.itemQuantity, { color: colors.text }]}>
+                Weight: {orderDetails.weight}
               </Text>
             </View>
-          ))}
+            <Text style={[styles.itemPrice, { color: colors.text }]}>
+              ${orderDetails.totalAmount.toFixed(2)}
+            </Text>
+          </View>
           <View style={styles.totalRow}>
             <Text style={[styles.totalLabel, { color: colors.text }]}>Total Amount</Text>
             <Text style={[styles.totalValue, { color: colors.text }]}>
@@ -201,6 +169,22 @@ export default function OrderDetailsScreen({
           </View>
         </View>
 
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Order Details</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Date</Text>
+          <Text style={[styles.value, { color: colors.text }]}>{orderDetails.date}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Time</Text>
+          <Text style={[styles.value, { color: colors.text }]}>
+            {orderDetails.time.hours}:{orderDetails.time.minutes.toString().padStart(2, '0')} {orderDetails.time.meridian}
+          </Text>
+          <Text style={[styles.label, { color: colors.text }]}>Payment Type</Text>
+          <Text style={[styles.value, { color: colors.text }]}>{orderDetails.paymentType}</Text>
+          <Text style={[styles.label, { color: colors.text }]}>Parcel Value</Text>
+          <Text style={[styles.value, { color: colors.text }]}>
+            {orderDetails.parcelValue ? `$${orderDetails.parcelValue}` : 'N/A'}
+          </Text>
+        </View>
+
         {orderDetails.deliveryNotes && (
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Delivery Notes</Text>
@@ -208,13 +192,13 @@ export default function OrderDetailsScreen({
           </View>
         )}
 
-        {orderDetails.assignedDriver && (
+        {orderDetails.assignedDriverDetails && (
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Assigned Driver</Text>
             <Text style={[styles.label, { color: colors.text }]}>Name</Text>
-            <Text style={[styles.value, { color: colors.text }]}>{orderDetails.assignedDriver.name}</Text>
+            <Text style={[styles.value, { color: colors.text }]}>{orderDetails.assignedDriverDetails.name}</Text>
             <Text style={[styles.label, { color: colors.text }]}>Phone</Text>
-            <Text style={[styles.value, { color: colors.text }]}>{orderDetails.assignedDriver.phone}</Text>
+            <Text style={[styles.value, { color: colors.text }]}>{orderDetails.assignedDriverDetails.phone}</Text>
           </View>
         )}
 

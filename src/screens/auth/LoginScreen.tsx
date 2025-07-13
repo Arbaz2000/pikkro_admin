@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Input from '../../components/commonCompoents/Input';
 import Button from '../../components/commonCompoents/Button';
 import { useTheme } from '../../services/ThemeService';
+import AuthService from '../../services/AuthService';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -16,38 +17,36 @@ type AuthStackParamList = {
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: { navigation: LoginScreenNavigationProp }) {
-  const [email, setEmail] = React.useState('');
+  const [identifier, setIdentifier] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const { colors } = useTheme();
 
-  const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmailOrPhone = (identifier: string) => {
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+    const isPhone = /^[0-9]{10,15}$/.test(identifier.replace(/\D/g, ''));
+    return isEmail || isPhone;
   };
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!identifier || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    if (!validateEmail(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    if (!validateEmailOrPhone(identifier)) {
+      Alert.alert('Error', 'Please enter a valid email address or phone number');
       return;
     }
 
     setIsLoading(true);
     try {
-      // TODO: Implement actual login logic here
-      // const response = await authService.login(email, password);
+      const response = await AuthService.loginWithEmailOrPhone(identifier, password);
+      console.log('Login successful:', response);
       navigation.replace('MainTabs');
     } catch (error) {
-      Alert.alert('Error', 'Invalid email or password');
+      console.error('Login error:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Invalid credentials');
     } finally {
       setIsLoading(false);
     }
@@ -63,14 +62,14 @@ export default function LoginScreen({ navigation }: { navigation: LoginScreenNav
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.title, { color: colors.text }]}>Admin Login</Text>
             <Input
-              label="Email"
-              placeholder="Enter your email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              label="Email or Phone"
+              placeholder="Enter your email or phone number"
+              value={identifier}
+              onChangeText={setIdentifier}
+              keyboardType="default"
               autoCapitalize="none"
               autoCorrect={false}
-              error={email && !validateEmail(email) ? 'Invalid email format' : undefined}
+              error={identifier && !validateEmailOrPhone(identifier) ? 'Invalid email or phone format' : undefined}
             />
             <Input
               label="Password"
@@ -78,7 +77,6 @@ export default function LoginScreen({ navigation }: { navigation: LoginScreenNav
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              error={password && password.length < 6 ? 'Password too short' : undefined}
             />
             <Button
               title="Login"
